@@ -3,8 +3,6 @@ import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Arrays;
-import java.util.HashMap;
-import java.util.Map;
 
 /**
  * Created by meidis on 26/05/15.
@@ -33,15 +31,16 @@ public class DNAAlignment {
         String a = splitted[0].trim();
         String b = splitted[1].trim();
 
-        int cacheSize = (int) Math.pow(2, 20);
-        int[] cache = new int[cacheSize];
-        Arrays.fill(cache, Integer.MIN_VALUE);
-        return solution(a.toCharArray(), 0, b.toCharArray(), 0, false, false, cache);
+        int cacheSize = (a.length()+1)*(b.length()+1)*3;
+        short[] cache = new short[cacheSize];
+        Arrays.fill(cache, Short.MIN_VALUE);
+        return solution(a.toCharArray(), 0, b.toCharArray(), 0, false, false, cache, b.length()+1);
     }
 
-    private int solution(char[] a, int aIdx, char[] b, int bIdx, boolean aIndel, boolean bIndel, int[] cache) {
-        final int key = (((((aIdx << 9) | bIdx) << 1) | (aIndel ? 1 : 0)) << 1) | (bIndel ? 1 : 0);
-        if (cache[key] != Integer.MIN_VALUE) {
+    private short solution(char[] a, int aIdx, char[] b, int bIdx, boolean aIndel, boolean bIndel, short[] cache, int bShift) {
+
+        final int key = (((((aIdx * bShift) + bIdx) *3) + ((!aIndel && !bIndel) ? 0 : aIndel ? 1 : 2)));
+        if (cache[key] != Short.MIN_VALUE) {
             return cache[key];
         }
         boolean aDone = aIdx == a.length;
@@ -50,17 +49,17 @@ public class DNAAlignment {
             return 0;
         } else {
             if (aDone || bDone) {
-                cache[key] = aDone
-                        ? solution(a, aIdx, b, bIdx + 1, true, false, cache) + (aIndel ? INDEL_EXTENSION : INDEL_START)
-                        : solution(a, aIdx + 1, b, bIdx, false, true, cache) + (bIndel ? INDEL_EXTENSION : INDEL_START);
+                cache[key] = (short) (aDone
+                        ? solution(a, aIdx, b, bIdx + 1, true, false, cache, bShift) + (aIndel ? INDEL_EXTENSION : INDEL_START)
+                        : solution(a, aIdx + 1, b, bIdx, false, true, cache, bShift) + (bIndel ? INDEL_EXTENSION : INDEL_START));
             } else {
                 cache[key] =
-                        Math.max(
+                        (short)Math.max(
                                 Math.max(
-                                        solution(a, aIdx, b, bIdx + 1, true, false, cache) + (aIndel ? INDEL_EXTENSION : INDEL_START),
-                                        solution(a, aIdx + 1, b, bIdx, false, true, cache) + (bIndel ? INDEL_EXTENSION : INDEL_START)
+                                        solution(a, aIdx, b, bIdx + 1, true, false, cache, bShift) + (aIndel ? INDEL_EXTENSION : INDEL_START),
+                                        solution(a, aIdx + 1, b, bIdx, false, true, cache, bShift) + (bIndel ? INDEL_EXTENSION : INDEL_START)
                                 ),
-                                solution(a, aIdx + 1, b, bIdx + 1, false, false, cache) + (a[aIdx] == b[bIdx] ? MATCH : MISMATCH)
+                                solution(a, aIdx + 1, b, bIdx + 1, false, false, cache, bShift) + (a[aIdx] == b[bIdx] ? MATCH : MISMATCH)
                         );
             }
             return cache[key];
